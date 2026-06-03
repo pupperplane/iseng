@@ -1,0 +1,5 @@
+const supabaseURL = 'https://jsepisnthcrtbeagimal.supabase.co';
+
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZXBpc250aGNydGJlYWdpbWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDcxNzIsImV4cCI6MjA5NTk4MzE3Mn0.sQ7VVTbhdqSwD_BDNoG6ACe7XCMLNUQJHl1_X0PTsrg";
+
+const supabase = supabase.createClient(supabaseURL, supabaseKey);
