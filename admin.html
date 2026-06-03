@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Manajemen - Absensi</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #1a1a1a;
+            margin: 0;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            font-size: 13px;
+            color: white;
+        }
+
+        .btn-refresh {
+            background-color: #17a2b8;
+        }
+
+        .btn-refresh:hover {
+            background-color: #138496;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .btn-edit:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-save:hover {
+            background-color: #0069d9;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+        }
+
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+
+        .dashboard-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 1100px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #eee;
+            padding: 12px 10px;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Styling untuk Pop-up Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .row-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row-group .form-group {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h2>Panel Manajemen Absensi</h2>
+        <div>
+            <button class="btn btn-add" onclick="bukaModal('tambah')">➕ Tambah Data Manual</button>
+            <button class="btn btn-refresh" onclick="muatSemuaData()">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <div class="dashboard-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Karyawan</th>
+                    <th>Tanggal</th>
+                    <th>Waktu Masuk</th>
+                    <th>Lokasi Masuk</th>
+                    <th>Waktu Keluar</th>
+                    <th>Lokasi Keluar</th>
+                    <th style="text-align: center;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tabelAdmin">
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #888;">Memuat data dari server...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-overlay" id="modalForm">
+        <div class="modal-content">
+            <h3 id="modalTitle">Tambah Data Absensi</h3>
+
+            <input type="hidden" id="formId">
+            <div class="form-group">
+                <label>ID Karyawan</label>
+                <input type="text" id="formUserId" placeholder="Misal: KB-001">
+            </div>
+
+            <div class="form-group">
+                <label>Tanggal</label>
+                <input type="date" id="formTanggal">
+            </div>
+
+            <div class="row-group">
+                <div class="form-group">
+                    <label>Jam Masuk</label>
+                    <input type="time" id="formIn" step="1">
+                </div>
+                <div class="form-group">
+                    <label>Jam Keluar</label>
+                    <input type="time" id="formOut" step="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Alamat Masuk (Bisa kosong)</label>
+                <input type="text" id="formAlamatIn" placeholder="Manual Input">
+            </div>
+
+            <div class="form-group">
+                <label>Alamat Keluar (Bisa kosong)</label>
+                <input type="text" id="formAlamatOut" placeholder="Manual Input">
+            </div>
+
+            <button class="btn btn-save" onclick="simpanData()">💾 Simpan Data</button>
+            <button class="btn btn-cancel" onclick="tutupModal()">❌ Batal</button>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://jsepisnthcrtbeagimal.supabase.co';
+        // PASTE ANON KEY KAMU DI SINI:
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZXBpc250aGNydGJlYWdpbWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDcxNzIsImV4cCI6MjA5NTk4MzE3Mn0.sQ7VVTbhdqSwD_BDNoG6ACe7XCMLNUQJHl1_X0PTsrg';
+
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        const namaTabel = 'absensi';
+
+        // Variabel global untuk menyimpan data yang ditarik agar mudah diedit
+        let dataGlobal = [];
+
+        // ==========================================
+        // 1. READ (Tarik Data)
+        // ==========================================
+        async function muatSemuaData() {
+            const tabelBody = document.getElementById('tabelAdmin');
+            tabelBody.innerHTML = `<tr><td colspan="7" style="text-align: center;">Memuat data terbaru...</td></tr>`;
+
+            try {
+                const { data: listAbsen, error } = await supabaseClient
+                    .from(namaTabel)
+                    .select('*')
+                    .order('tanggal', { ascending: false })
+                    .order('check_in', { ascending: false });
+
+                if (error) throw error;
+
+                dataGlobal = listAbsen || []; // Simpan ke variabel global
+
+                if (dataGlobal.length === 0) {
+                    tabelBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888;">Belum ada log absensi.</td></tr>`;
+                    return;
+                }
+
+                tabelBody.innerHTML = "";
+
+                dataGlobal.forEach(row => {
+                    const jamMasuk = row.check_in || '-';
+                    const jamKeluar = row.check_out || '-';
+                    const lokasiMasuk = row.alamat_check_in || '-';
+                    const lokasiKeluar = row.alamat_check_out || '-';
+
+                    const htmlRow = `
+                        <tr>
+                            <td><strong>${row.user_id}</strong></td>
+                            <td>${row.tanggal}</td>
+                            <td style="color: #28a745; font-weight: bold;">${jamMasuk}</td>
+                            <td style="font-size: 11px; max-width: 150px;">${lokasiMasuk}</td>
+                            <td style="color: #dc3545; font-weight: bold;">${jamKeluar}</td>
+                            <td style="font-size: 11px; max-width: 150px;">${lokasiKeluar}</td>
+                            <td style="text-align: center; width: 130px;">
+                                <button class="btn btn-edit" onclick="bukaModal('edit', ${row.id})">Edit</button>
+                                <button class="btn btn-delete" onclick="hapusData(${row.id})">Hapus</button>
+                            </td>
+                        </tr>
+                    `;
+                    tabelBody.innerHTML += htmlRow;
+                });
+
+            } catch (err) {
+                console.error("Error:", err);
+                tabelBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Gagal memuat data.</td></tr>`;
+            }
+        }
+
+        // ==========================================
+        // 2. LOGIKA MODAL (Pop-up)
+        // ==========================================
+        function bukaModal(mode, id = null) {
+            document.getElementById('modalForm').style.display = 'flex';
+
+            // Reset form setiap kali dibuka
+            document.getElementById('formId').value = '';
+            document.getElementById('formUserId').value = '';
+            document.getElementById('formTanggal').value = '';
+            document.getElementById('formIn').value = '';
+            document.getElementById('formOut').value = '';
+            document.getElementById('formAlamatIn').value = '';
+            document.getElementById('formAlamatOut').value = '';
+
+            if (mode === 'tambah') {
+                document.getElementById('modalTitle').innerText = 'Tambah Data Baru';
+            } else if (mode === 'edit') {
+                document.getElementById('modalTitle').innerText = 'Edit Data Absensi';
+
+                // Cari data berdasarkan ID dari array global
+                const barisData = dataGlobal.find(item => item.id === id);
+                if (barisData) {
+                    document.getElementById('formId').value = barisData.id;
+                    document.getElementById('formUserId').value = barisData.user_id;
+                    document.getElementById('formTanggal').value = barisData.tanggal;
+                    document.getElementById('formIn').value = barisData.check_in || '';
+                    document.getElementById('formOut').value = barisData.check_out || '';
+                    document.getElementById('formAlamatIn').value = barisData.alamat_check_in || '';
+                    document.getElementById('formAlamatOut').value = barisData.alamat_check_out || '';
+                }
+            }
+        }
+
+        function tutupModal() {
+            document.getElementById('modalForm').style.display = 'none';
+        }
+
+        // ==========================================
+        // 3. CREATE & UPDATE (Simpan Data)
+        // ==========================================
+        async function simpanData() {
+            const id = document.getElementById('formId').value;
+            const userId = document.getElementById('formUserId').value.trim();
+            const tanggal = document.getElementById('formTanggal').value;
+            const checkIn = document.getElementById('formIn').value || null;
+            const checkOut = document.getElementById('formOut').value || null;
+            const alamatIn = document.getElementById('formAlamatIn').value || null;
+            const alamatOut = document.getElementById('formAlamatOut').value || null;
+
+            if (!userId || !tanggal) {
+                alert("ID Karyawan dan Tanggal wajib diisi!");
+                return;
+            }
+
+            // Paket data yang akan dikirim ke database
+            const payload = {
+                user_id: userId,
+                tanggal: tanggal,
+                check_in: checkIn,
+                check_out: checkOut,
+                alamat_check_in: alamatIn,
+                alamat_check_out: alamatOut
+            };
+
+            try {
+                if (id) {
+                    // Jika ada ID -> Proses UPDATE (Edit)
+                    const { error } = await supabaseClient.from(namaTabel).update(payload).eq('id', id);
+                    if (error) throw error;
+                    alert("Data berhasil diubah!");
+                } else {
+                    // Jika tidak ada ID -> Proses INSERT (Tambah Baru)
+                    const { error } = await supabaseClient.from(namaTabel).insert([payload]);
+                    if (error) throw error;
+                    alert("Data baru berhasil ditambahkan!");
+                }
+
+                tutupModal();
+                muatSemuaData(); // Refresh tabel setelah simpan
+
+            } catch (err) {
+                console.error("Gagal simpan:", err);
+                alert("Gagal menyimpan data ke database!");
+            }
+        }
+
+        // ==========================================
+        // 4. DELETE (Hapus Data)
+        // ==========================================
+        async function hapusData(id) {
+            const konfirmasi = confirm("Apakah kamu yakin ingin menghapus data ini? Aksi ini tidak bisa dibatalkan.");
+
+            if (konfirmasi) {
+                try {
+                    const { error } = await supabaseClient.from(namaTabel).delete().eq('id', id);
+                    if (error) throw error;
+
+                    alert("Data berhasil dihapus!");
+                    muatSemuaData(); // Refresh tabel
+                } catch (err) {
+                    console.error("Gagal hapus:", err);
+                    alert("Gagal menghapus data!");
+                }
+            }
+        }
+
+        // Jalankan saat pertama kali dibuka
+        window.onload = muatSemuaData;
+    </script>
+</body>
+
+</html>
