@@ -78,26 +78,7 @@
         <div class="input-group">
             <label>Pilih Lokasi Kantor</label>
             <select id="lokasiKantor">
-                <option value="" disabled selected>-- Select Location --</option>
-                <option value="HEAD OFFICE_MT HARYONO">HEAD OFFICE_MT HARYONO</option>
-                <option value="HEAD OFFICE_RADIO DALAM">HEAD OFFICE_RADIO DALAM</option>
-                <option value="BANDAR LAMPUNG_BANDAR LAMPUNG">BANDAR LAMPUNG_BANDAR LAMPUNG</option>
-                <option value="BANDAR LAMPUNG_KALIANDA">BANDAR LAMPUNG_KALIANDA</option>
-                <option value="BANDAR LAMPUNG_METRO">BANDAR LAMPUNG_METRO</option>
-                <option value="BANDUNG_BANDUNG">BANDUNG_BANDUNG</option>
-                <option value="BANDUNG_BANDUNG KOTA BARU PARAHYANGAN">BANDUNG_BANDUNG KOTA BARU PARAHYANGAN</option>
-                <option value="BANDUNG_BANDUNG TAMAN KOPO INDAH">BANDUNG_BANDUNG TAMAN KOPO INDAH</option>
-                <option value="BANDUNG_SETIABUDI">BANDUNG_SETIABUDI</option>
-                <option value="BANJARMASIN_BANJARMASIN">BANJARMASIN_BANJARMASIN</option>
-                <option value="BANJARMASIN_BANJARBARU">BANJARMASIN_BANJARBARU</option>
-                <option value="BANJARMASIN_MARABAHAN">BANJARMASIN_MARABAHAN</option>
-                <option value="BATAM_BATAM">BATAM_BATAM</option>
-                <option value="BATAM_BATAM CENTER">BATAM_BATAM CENTER</option>
-                <option value="BEKASI BARAT_BEKASI BARAT">BEKASI BARAT_BEKASI BARAT</option>
-                <option value="BEKASI BARAT_BEKASI KALIMAS">BEKASI BARAT_BEKASI KALIMAS</option>
-                <option value="BEKASI BARAT_PONDOK GEDE">BEKASI BARAT_PONDOK GEDE</option>
-                <option value="BINTARO_ALAM SUTERA">BINTARO_ALAM SUTERA</option>
-                <option value="BINTARO_BINTARO">BINTARO_BINTARO</option>
+                <option value="" disabled selected>-- Memuat Lokasi... --</option>
             </select>
         </div>
 
@@ -134,12 +115,14 @@
         // 1. KONFIGURASI SUPABASE
         // ==========================================
         const supabaseUrl = 'https://jsepisnthcrtbeagimal.supabase.co';
+        // PASTE ANON KEY KAMU DI BAWAH INI:
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZXBpc250aGNydGJlYWdpbWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDcxNzIsImV4cCI6MjA5NTk4MzE3Mn0.sQ7VVTbhdqSwD_BDNoG6ACe7XCMLNUQJHl1_X0PTsrg';
 
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
         const tabelAbsensi = 'absensi';
         const tabelKaryawan = 'karyawan';
+        const tabelLokasi = 'lokasi_kantor'; // Nama tabel baru untuk dropdown
 
         function showStatus(message, type) {
             const statusEl = document.getElementById('status');
@@ -149,12 +132,47 @@
         }
 
         // ==========================================
-        // 2. LOGIKA AUTENTIKASI (LOGIN / LOGOUT)
+        // 2. FUNGSI MUAT DROPDOWN DINAMIS
+        // ==========================================
+        async function muatLokasiKantor() {
+            const dropdown = document.getElementById('lokasiKantor');
+            
+            try {
+                // Tarik data dari tabel lokasi_kantor dan urutkan sesuai abjad A-Z
+                const { data, error } = await supabaseClient
+                    .from(tabelLokasi)
+                    .select('nama_kantor')
+                    .order('nama_kantor', { ascending: true });
+
+                if (error) throw error;
+
+                // Reset dan siapkan opsi pertama (placeholder)
+                dropdown.innerHTML = '<option value="" disabled selected>-- Pilih Lokasi Kantor --</option>';
+
+                // Masukkan hasil dari database ke dalam tag <option>
+                if (data && data.length > 0) {
+                    data.forEach(kantor => {
+                        const option = document.createElement('option');
+                        option.value = kantor.nama_kantor;
+                        option.text = kantor.nama_kantor;
+                        dropdown.appendChild(option);
+                    });
+                } else {
+                    dropdown.innerHTML = '<option value="" disabled selected>-- Belum ada data lokasi --</option>';
+                }
+            } catch (err) {
+                console.error("Gagal memuat lokasi kantor:", err);
+                dropdown.innerHTML = '<option value="" disabled selected>-- Gagal memuat lokasi --</option>';
+            }
+        }
+
+        // ==========================================
+        // 3. LOGIKA AUTENTIKASI (LOGIN / LOGOUT)
         // ==========================================
         window.onload = () => {
             const loggedInId = localStorage.getItem('absen_userId');
             const loggedInName = localStorage.getItem('absen_userName');
-            const loggedInPosisi = localStorage.getItem('absen_userPosisi'); // Ambil posisi dari local storage
+            const loggedInPosisi = localStorage.getItem('absen_userPosisi');
             
             if (loggedInId && loggedInName) {
                 tampilkanHalamanAbsen(loggedInId, loggedInName, loggedInPosisi);
@@ -185,10 +203,9 @@
                 if (error) throw error;
 
                 if (data) {
-                    // Simpan data ID, Nama, dan Posisi ke Local Storage
                     localStorage.setItem('absen_userId', data.user_id);
                     localStorage.setItem('absen_userName', data.nama);
-                    localStorage.setItem('absen_userPosisi', data.posisi || 'Staff'); // Kalau kosong, default 'Staff'
+                    localStorage.setItem('absen_userPosisi', data.posisi || 'Staff');
                     
                     statusEl.innerText = "";
                     tampilkanHalamanAbsen(data.user_id, data.nama, data.posisi);
@@ -206,11 +223,10 @@
         function prosesLogout() {
             localStorage.removeItem('absen_userId');
             localStorage.removeItem('absen_userName');
-            localStorage.removeItem('absen_userPosisi'); // Bersihkan posisi juga saat logout
+            localStorage.removeItem('absen_userPosisi');
             
             document.getElementById('loginId').value = '';
             document.getElementById('loginPass').value = '';
-            document.getElementById('lokasiKantor').value = ''; 
             
             document.getElementById('absenSection').style.display = 'none';
             document.getElementById('historySection').style.display = 'none';
@@ -219,16 +235,14 @@
             document.getElementById('loginSection').style.display = 'block';
         }
 
-        // Tampilkan halaman dengan injeksi ID, Nama, dan POSISI
         function tampilkanHalamanAbsen(userId, userName, userPosisi) {
             document.getElementById('loginSection').style.display = 'none';
             document.body.style.justifyContent = 'flex-start'; 
             document.getElementById('absenSection').style.display = 'block';
             document.getElementById('historySection').style.display = 'block';
             
-            const posisiFinal = userPosisi ? userPosisi : 'Staff'; // Fallback kalau belum diset admin
+            const posisiFinal = userPosisi ? userPosisi : 'Staff';
             
-            // Injeksi ke HTML
             document.getElementById('teksSapaan').innerHTML = `
                 Halo, <strong>${userName}</strong> (${userId})
                 <span class="posisi-badge">💼 ${posisiFinal}</span>
@@ -236,11 +250,13 @@
             
             document.getElementById('status').style.display = 'none';
             
+            // Panggil 2 fungsi sekaligus saat halaman absen terbuka
             muatRiwayat(); 
+            muatLokasiKantor(); 
         }
 
         // ==========================================
-        // 3. FUNGSI GPS & ALAMAT
+        // 4. FUNGSI GPS & ALAMAT
         // ==========================================
         async function dapatkanAlamat(lat, lon) {
             try {
@@ -253,7 +269,7 @@
         }
 
         // ==========================================
-        // 4. PROSES CHECK IN & CHECK OUT
+        // 5. PROSES CHECK IN & CHECK OUT
         // ==========================================
         function prosesAbsen(tipeAbsen) {
             const userId = localStorage.getItem('absen_userId');
@@ -363,7 +379,7 @@
         }
 
         // ==========================================
-        // 5. MUAT RIWAYAT
+        // 6. MUAT RIWAYAT
         // ==========================================
         async function muatRiwayat() {
             const userId = localStorage.getItem('absen_userId');
